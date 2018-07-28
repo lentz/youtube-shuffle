@@ -1,6 +1,5 @@
 const { google } = require('googleapis');
 const http = require('http');
-const opn = require('opn');
 const querystring = require('querystring');
 const shuffle = require('shuffle-array');
 const url = require('url');
@@ -9,35 +8,11 @@ require('dotenv').config();
 
 const youtube = google.youtube({ version: 'v3' });
 
-function authenticate() {
-  return new Promise((resolve, reject) => {
-    const oAuth2Client = new OAuth2Client(
-      process.env.CLIENT_ID,
-      process.env.CLIENT_SECRET,
-      [process.env.REDIRECT_URI],
-    );
-
-    const authorizeUrl = oAuth2Client.generateAuthUrl({
-      access_type: 'offline',
-      scope: 'https://www.googleapis.com/auth/youtube.force-ssl',
-    });
-
-    const server = http.createServer(async (req, res) => {
-      if (req.url.includes('auth/callback')) {
-        const qs = querystring.parse(url.parse(req.url).query);
-        res.end('Authentication successful! Please return to the console.');
-        server.close();
-
-        const r = await oAuth2Client.getToken(qs.code)
-        oAuth2Client.setCredentials(r.tokens);
-        google.options({ auth: oAuth2Client });
-        return resolve();
-      }
-    }).listen(3000, () => {
-      opn(authorizeUrl);
-    });
-  });
-}
+const oAuth2Client = new OAuth2Client(
+  process.env.CLIENT_ID,
+  process.env.CLIENT_SECRET,
+  [process.env.REDIRECT_URI],
+);
 
 async function shuffleItems(items) {
   shuffle(items);
@@ -80,11 +55,31 @@ async function playlistItemsListByPlaylistId(playlistId) {
   return items;
 }
 
-authenticate()
-  .then(() => playlistItemsListByPlaylistId(process.argv[2]))
-  .then(shuffleItems)
-  .then(process.exit)
-  .catch((err) => {
-    console.error(err);
-    process.exit(1);
-  });
+const server = http.createServer(async (req, res) => {
+  try {
+    const qs = querystring.parse(url.parse(req.url).query);
+    if (req.url.includes('auth/callback')) {
+      const r = await oAuth2Client.getToken(qs.code)
+      oAuth2Client.setCredentials(r.tokens);
+      google.options({ auth: oAuth2Client });
+
+      const items = await playlistItemsListByPlaylistId(qs.state);
+      await shuffleItems(items);
+      res.end('Shuffled!');
+    } else {
+      const authorizeUrl = oAuth2Client.generateAuthUrl({
+        access_type: 'offline',
+        scope: 'https://www.googleapis.com/auth/youtube.force-ssl',
+        state: qs.playlistId,
+      });
+      res.setHeader('Location', authorizeUrl);
+      res.statusCode = 302;
+      res.end();
+    }
+  } catch(err) {
+    res.statusCode = 500;
+    res.end(err);
+  }
+}).listen(process.env.PORT, () => {
+  console.log('Listening on port', process.env.PORT);
+});
