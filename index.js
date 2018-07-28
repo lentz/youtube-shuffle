@@ -2,9 +2,12 @@ const { google } = require('googleapis');
 const http = require('http');
 const opn = require('opn');
 const querystring = require('querystring');
+const shuffle = require('shuffle-array');
 const url = require('url');
 const { OAuth2Client } = require('google-auth-library');
 require('dotenv').config();
+
+const youtube = google.youtube({ version: 'v3' });
 
 function authenticate() {
   return new Promise((resolve, reject) => {
@@ -25,7 +28,6 @@ function authenticate() {
         res.end('Authentication successful! Please return to the console.');
         server.close();
 
-        // Now that we have the code, use that to acquire tokens.
         const r = await oAuth2Client.getToken(qs.code)
         oAuth2Client.setCredentials(r.tokens);
         google.options({ auth: oAuth2Client });
@@ -38,18 +40,30 @@ function authenticate() {
 }
 
 async function shuffleItems(items) {
-  items = items.map(i => ({
-    id: i.id,
-    title: i.snippet.title,
-    position: i.snippet.position,
-    resourceId: i.snippet.resourceId,
-  }));
-  console.log(items.length);
+  shuffle(items);
+  let position = 0;
+  for (const item of items) {
+    const params = {
+      part: 'snippet',
+      requestBody: {
+        id: item.id,
+        snippet: {
+          playlistId: item.snippet.playlistId,
+          position,
+          resourceId: {
+            kind: item.snippet.resourceId.kind,
+            videoId: item.snippet.resourceId.videoId,
+          },
+        },
+      },
+    };
+    const updateResp = await youtube.playlistItems.update(params);
+    if (updateResp.status !== 200) { throw new Error(updateResp); }
+    position += 1;
+  }
 }
 
 async function playlistItemsListByPlaylistId(playlistId) {
-  const youtube = google.youtube({ version: 'v3' });
-
   let items = [];
   const params = { maxResults: '50', part: 'snippet', playlistId };
   let itemsResp;
