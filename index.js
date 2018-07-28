@@ -55,30 +55,45 @@ async function playlistItemsListByPlaylistId(playlistId) {
   return items;
 }
 
+async function shuffleRoute(qs, res) {
+  const r = await oAuth2Client.getToken(qs.code)
+  oAuth2Client.setCredentials(r.tokens);
+  google.options({ auth: oAuth2Client });
+
+  console.log('Shuffling playlist ID', qs.state);
+  const items = await playlistItemsListByPlaylistId(qs.state);
+  await shuffleItems(items);
+  res.end('Shuffled!');
+}
+
+async function authRoute(parsedUrl, res) {
+  const playlistId = parsedUrl.path.substr(1);
+  if (!playlistId) {
+    res.statusCode = 400;
+    return res.end('ERROR: playlistId missing from path!');
+  }
+
+  const authorizeUrl = oAuth2Client.generateAuthUrl({
+    access_type: 'offline',
+    scope: 'https://www.googleapis.com/auth/youtube.force-ssl',
+    state: playlistId,
+  });
+  res.setHeader('Location', authorizeUrl);
+  res.statusCode = 302;
+  res.end();
+}
+
 const server = http.createServer(async (req, res) => {
   try {
-    const qs = querystring.parse(url.parse(req.url).query);
-    if (req.url.includes('auth/callback')) {
-      const r = await oAuth2Client.getToken(qs.code)
-      oAuth2Client.setCredentials(r.tokens);
-      google.options({ auth: oAuth2Client });
-
-      const items = await playlistItemsListByPlaylistId(qs.state);
-      await shuffleItems(items);
-      res.end('Shuffled!');
+    const parsedUrl = url.parse(req.url);
+    if (parsedUrl.path.startsWith('/auth/callback')) {
+      shuffleRoute(querystring.parse(parsedUrl.query), res);
     } else {
-      const authorizeUrl = oAuth2Client.generateAuthUrl({
-        access_type: 'offline',
-        scope: 'https://www.googleapis.com/auth/youtube.force-ssl',
-        state: qs.playlistId,
-      });
-      res.setHeader('Location', authorizeUrl);
-      res.statusCode = 302;
-      res.end();
+      authRoute(parsedUrl, res);
     }
-  } catch(err) {
+  } catch (err) {
     res.statusCode = 500;
-    res.end(err);
+    res.end(err.toString());
   }
 }).listen(process.env.PORT, () => {
   console.log('Listening on port', process.env.PORT);
