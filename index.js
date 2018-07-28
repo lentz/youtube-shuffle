@@ -14,7 +14,7 @@ const oAuth2Client = new OAuth2Client(
   [process.env.REDIRECT_URI],
 );
 
-async function shuffleItems(items) {
+async function shuffleItems(items, res) {
   shuffle(items);
   let position = 0;
   for (const item of items) {
@@ -32,6 +32,7 @@ async function shuffleItems(items) {
         },
       },
     };
+    res.write(`Updating video ${position + 1} of ${items.length}<br/>`);
     const updateResp = await youtube.playlistItems.update(params);
     if (updateResp.status !== 200) { throw new Error(updateResp); }
     position += 1;
@@ -61,12 +62,13 @@ async function shuffleRoute(qs, res) {
   google.options({ auth: oAuth2Client });
 
   console.log('Shuffling playlist ID', qs.state);
+  res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
   const items = await playlistItemsListByPlaylistId(qs.state);
-  await shuffleItems(items);
-  res.end('Shuffled!');
+  await shuffleItems(items, res);
+  res.end('Playlist shuffled!');
 }
 
-async function authRoute(parsedUrl, res) {
+function authRoute(parsedUrl, res) {
   const playlistId = parsedUrl.path.substr(1);
   if (!playlistId) {
     res.statusCode = 400;
@@ -87,7 +89,7 @@ const server = http.createServer(async (req, res) => {
   try {
     const parsedUrl = url.parse(req.url);
     if (parsedUrl.path.startsWith('/auth/callback')) {
-      shuffleRoute(querystring.parse(parsedUrl.query), res);
+      await shuffleRoute(querystring.parse(parsedUrl.query), res);
     } else {
       authRoute(parsedUrl, res);
     }
