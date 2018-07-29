@@ -8,12 +8,6 @@ require('dotenv').config();
 
 const youtube = google.youtube({ version: 'v3' });
 
-const oAuth2Client = new OAuth2Client(
-  process.env.CLIENT_ID,
-  process.env.CLIENT_SECRET,
-  [process.env.REDIRECT_URI],
-);
-
 async function shuffleItems(items, res) {
   shuffle(items);
   let position = 0;
@@ -56,42 +50,68 @@ async function playlistItemsListByPlaylistId(playlistId) {
   return items;
 }
 
-async function shuffleRoute(qs, res) {
-  const r = await oAuth2Client.getToken(qs.code)
-  oAuth2Client.setCredentials(r.tokens);
-  google.options({ auth: oAuth2Client });
+async function getPlaylists() {
+  const playlistsResp = await youtube.playlists.list(
+    { part: 'snippet', mine: true, maxResults: 25 },
+  );
+  return playlistsResp.data.items.map(pl => {
+    return `<a href="/playlist/${pl.id}"><h2>${pl.snippet.title}</h2></a>`;
+  }).join('<br />');
+}
 
-  console.log('Shuffling playlist ID', qs.state);
+async function shuffleRoute(req, res) {
+  const parsedUrl = url.parse(req.url);
+  const playlistId = parsedUrl.pathname.split('/')[2];
+  console.log('Shuffling playlist ID', playlistId);
   res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-  const items = await playlistItemsListByPlaylistId(qs.state);
+  const items = await playlistItemsListByPlaylistId(playlistId);
   await shuffleItems(items, res);
   res.end('Playlist shuffled!');
 }
 
-function authRoute(parsedUrl, res) {
-  const playlistId = parsedUrl.path.substr(1);
-  if (!playlistId) {
-    res.statusCode = 400;
-    return res.end('ERROR: playlistId missing from path!');
+async function setAuth(req, res) {
+  const qs = querystring.parse(url.parse(req.url).query);
+  const oAuth2Client = new OAuth2Client(
+    process.env.CLIENT_ID,
+    process.env.CLIENT_SECRET,
+    [process.env.REDIRECT_URI],
+  );
+
+  if (req.headers.cookie) {
+    const tokens = JSON.parse(req.headers.cookie.split('=')[1]);
+    oAuth2Client.setCredentials(tokens);
+  } else if (qs.code) {
+    const tokensResp = await oAuth2Client.getToken(qs.code)
+    oAuth2Client.setCredentials(tokensResp.tokens);
+    res.setHeader(
+      'Set-Cookie',
+      `token=${JSON.stringify(tokensResp.tokens)}; Max-Age=2147483647;  HttpOnly`,
+    );
+  } else {
+    const authorizeUrl = oAuth2Client.generateAuthUrl({
+      access_type: 'offline',
+      scope: 'https://www.googleapis.com/auth/youtube.force-ssl',
+    });
+    res.setHeader('Location', authorizeUrl);
+    res.statusCode = 302;
+    return res.end();
   }
 
-  const authorizeUrl = oAuth2Client.generateAuthUrl({
-    access_type: 'offline',
-    scope: 'https://www.googleapis.com/auth/youtube.force-ssl',
-    state: playlistId,
-  });
-  res.setHeader('Location', authorizeUrl);
-  res.statusCode = 302;
-  res.end();
+  google.options({ auth: oAuth2Client });
 }
 
 const server = http.createServer(async (req, res) => {
   try {
     const parsedUrl = url.parse(req.url);
-    if (parsedUrl.path.startsWith('/auth/callback')) {
-      await shuffleRoute(querystring.parse(parsedUrl.query), res);
-    } else {
-      authRoute(parsedUrl, res);
+    await setAuth(req, res);
+    if (parsedUrl.pathname === '/' && !res.finished) {
+      res.end(await getPlaylists());
+    } else if (parsedUrl.pathname.startsWith('/playlist/')) {
+      await shuffleRoute(req, res);
+    }
+    else {
+      res.statusCode = 404;
+      res.end();
     }
   } catch (err) {
     res.statusCode = 500;
