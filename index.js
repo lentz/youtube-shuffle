@@ -8,9 +8,26 @@ require('dotenv').config();
 
 const youtube = google.youtube({ version: 'v3' });
 
+const LAYOUT_START = `
+  <!DOCTYPE html>
+  <html>
+    <head>
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+    </head>
+    <body>`;
+
+const LAYOUT_FOOTER = `
+  </body>
+  </html>`;
+
+function applyLayout(bodyContent) {
+  return LAYOUT_START + bodyContent + LAYOUT_FOOTER;
+}
+
 async function shuffleItems(items, res) {
   shuffle(items);
   let position = 0;
+  res.write(LAYOUT_START);
   for (const item of items) {
     const params = {
       part: 'snippet',
@@ -31,6 +48,7 @@ async function shuffleItems(items, res) {
     if (updateResp.status !== 200) { throw new Error(updateResp); }
     position += 1;
   }
+  res.write(LAYOUT_FOOTER);
 }
 
 async function playlistItemsListByPlaylistId(playlistId) {
@@ -106,7 +124,7 @@ const server = http.createServer(async (req, res) => {
     const parsedUrl = url.parse(req.url);
     await setAuth(req, res);
     if (parsedUrl.pathname === '/' && !res.finished) {
-      res.end(await getPlaylists());
+      res.end(applyLayout(await getPlaylists()));
     } else if (parsedUrl.pathname.startsWith('/playlist/')) {
       await shuffleRoute(req, res);
     }
