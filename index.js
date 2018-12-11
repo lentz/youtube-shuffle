@@ -1,12 +1,9 @@
-const { google } = require('googleapis');
 const http = require('http');
 const querystring = require('querystring');
-const shuffle = require('shuffle-array');
 const url = require('url');
 const { OAuth2Client } = require('google-auth-library');
 require('dotenv').config();
-
-const youtube = google.youtube({ version: 'v3' });
+const { getPlaylists, setAuth, shufflePlaylist } = require('./shuffler');
 
 const LAYOUT_START = `
   <!DOCTYPE html>
@@ -24,70 +21,18 @@ function applyLayout(bodyContent) {
   return LAYOUT_START + bodyContent + LAYOUT_FOOTER;
 }
 
-async function shuffleItems(items, res) {
-  shuffle(items);
-  let position = 0;
-  res.write(LAYOUT_START);
-  for (const item of items) {
-    const params = {
-      part: 'snippet',
-      requestBody: {
-        id: item.id,
-        snippet: {
-          playlistId: item.snippet.playlistId,
-          position,
-          resourceId: {
-            kind: item.snippet.resourceId.kind,
-            videoId: item.snippet.resourceId.videoId,
-          },
-        },
-      },
-    };
-    res.write(`Updating video ${position + 1} of ${items.length}<br/>`);
-    const updateResp = await youtube.playlistItems.update(params);
-    if (updateResp.status !== 200) { throw new Error(updateResp); }
-    position += 1;
-  }
-  res.write(LAYOUT_FOOTER);
-}
-
-async function playlistItemsListByPlaylistId(playlistId) {
-  let items = [];
-  const params = { maxResults: '50', part: 'snippet', playlistId };
-  let itemsResp;
-
-  do {
-    if (itemsResp && itemsResp.data.nextPageToken) {
-      params.pageToken = itemsResp.data.nextPageToken;
-    }
-
-    itemsResp = await youtube.playlistItems.list(params);
-    items = items.concat(itemsResp.data.items);
-  } while (itemsResp.data.nextPageToken);
-
-  return items;
-}
-
-async function getPlaylists() {
-  const playlistsResp = await youtube.playlists.list(
-    { part: 'snippet', mine: true, maxResults: 25 },
-  );
-  return playlistsResp.data.items.map(pl => {
-    return `<a href="/playlist/${pl.id}"><h2>${pl.snippet.title}</h2></a>`;
-  }).join('<br />');
-}
-
 async function shuffleRoute(req, res) {
   const parsedUrl = url.parse(req.url);
   const playlistId = parsedUrl.pathname.split('/')[2];
-  console.log('Shuffling playlist ID', playlistId);
-  res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-  const items = await playlistItemsListByPlaylistId(playlistId);
-  await shuffleItems(items, res);
-  res.end('Playlist shuffled!');
+  shufflePlaylist(playlistId);
+  res.end(
+    `${LAYOUT_START}
+    Shuffling playlist ${playlistId} at ${new Date()}!
+    ${LAYOUT_FOOTER}`,
+  );
 }
 
-async function setAuth(req, res) {
+async function authMiddleware(req, res) {
   const qs = querystring.parse(url.parse(req.url).query);
   const oAuth2Client = new OAuth2Client(
     process.env.CLIENT_ID,
@@ -116,15 +61,19 @@ async function setAuth(req, res) {
     return res.end();
   }
 
-  google.options({ auth: oAuth2Client });
+  setAuth(oAuth2Client);
 }
 
 const server = http.createServer(async (req, res) => {
   try {
     const parsedUrl = url.parse(req.url);
-    await setAuth(req, res);
+    await authMiddleware(req, res);
     if (parsedUrl.pathname === '/' && !res.finished) {
-      res.end(applyLayout(await getPlaylists()));
+      const playlists = await getPlaylists();
+      const playlistsHTML = playlists.map(pl => {
+        return `<a href="/playlist/${pl.id}"><h2>${pl.snippet.title}</h2></a>`;
+      }).join('<br />');
+      res.end(applyLayout(playlistsHTML));
     } else if (parsedUrl.pathname.startsWith('/playlist/')) {
       await shuffleRoute(req, res);
     }
