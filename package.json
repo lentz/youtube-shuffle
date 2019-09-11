@@ -21,7 +21,7 @@
     "npm": ">= 6.0.0"
   },
   "dependencies": {
-    "dotenv": "^6.0.0",
+    "dotenv": "^8.1.0",
     "google-auth-library": "^4.2.0",
     "googleapis": "^32.0.0",
     "shuffle-array": "^1.0.1"
