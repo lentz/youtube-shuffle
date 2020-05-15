@@ -17,13 +17,15 @@
     "start": "node index.js"
   },
   "engines": {
-    "node": ">= 8.9.0",
-    "npm": ">= 6.0.0"
+    "node": ">= 10.0.0"
   },
   "dependencies": {
     "dotenv": "^8.2.0",
     "google-auth-library": "^6.0.0",
     "googleapis": "^50.0.0",
     "shuffle-array": "^1.0.1"
+  },
+  "devDependencies": {
+    "prettier": "^2.0.5"
   }
 }

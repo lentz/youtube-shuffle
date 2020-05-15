@@ -23,7 +23,9 @@ async function shuffleItems(items) {
     };
     const updateResp = await youtube.playlistItems.update(params);
     console.log(`shuffled ${position + 1} of ${items.length}`);
-    if (updateResp.status !== 200) { throw new Error(updateResp); }
+    if (updateResp.status !== 200) {
+      throw new Error(updateResp);
+    }
     position += 1;
   }
 }
@@ -46,9 +48,11 @@ async function playlistItemsListByPlaylistId(playlistId) {
 }
 
 async function getPlaylists() {
-  const playlistsResp = await youtube.playlists.list(
-    { part: 'snippet', mine: true, maxResults: 25 },
-  );
+  const playlistsResp = await youtube.playlists.list({
+    part: 'snippet',
+    mine: true,
+    maxResults: 25,
+  });
   return playlistsResp.data.items;
 }
 
