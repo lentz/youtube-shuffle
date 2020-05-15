@@ -1,7 +1,7 @@
 {
   "name": "youtube-shuffle",
-  "version": "0.1.0",
-  "description": "Shuffle a YouTube playlist",
+  "version": "0.1.1",
+  "description": "Shuffle YouTube playlists",
   "author": "Jesse Lentz",
   "homepage": "https://github.com/lentz/youtube-shuffle#readme",
   "license": "MIT",
@@ -17,7 +17,7 @@
     "start": "node index.js"
   },
   "engines": {
-    "node": ">= 10.0.0"
+    "node": "^10.0.0"
   },
   "dependencies": {
     "dotenv": "^8.2.0",
