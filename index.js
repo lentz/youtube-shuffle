@@ -66,7 +66,7 @@ async function authMiddleware(req, res) {
   setAuth(oAuth2Client);
 }
 
-const server = http
+http
   .createServer(async (req, res) => {
     try {
       const parsedUrl = url.parse(req.url);
