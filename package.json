@@ -29,7 +29,7 @@
   },
   "devDependencies": {
     "eslint": "^7.7.0",
-    "lint-staged": "^10.2.11",
+    "lint-staged": "^10.2.13",
     "pre-commit": "^1.2.2",
     "prettier": "^2.0.5"
   },
