@@ -28,7 +28,7 @@
     "shuffle-array": "^1.0.1"
   },
   "devDependencies": {
-    "eslint": "^7.7.0",
+    "eslint": "^7.8.1",
     "lint-staged": "^10.2.13",
     "pre-commit": "^1.2.2",
     "prettier": "^2.1.1"
