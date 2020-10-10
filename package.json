@@ -23,7 +23,7 @@
   },
   "dependencies": {
     "dotenv": "^8.2.0",
-    "google-auth-library": "^6.1.0",
+    "google-auth-library": "^6.1.1",
     "googleapis": "^60.0.1",
     "shuffle-array": "^1.0.1"
   },
