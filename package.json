@@ -24,7 +24,7 @@
   "dependencies": {
     "dotenv": "^8.2.0",
     "google-auth-library": "^6.1.4",
-    "googleapis": "^66.0.0",
+    "googleapis": "^67.0.0",
     "shuffle-array": "^1.0.1"
   },
   "devDependencies": {
