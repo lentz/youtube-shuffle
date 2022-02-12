@@ -3,9 +3,7 @@ updates:
   - package-ecosystem: npm
     directory: '/'
     schedule:
-      interval: weekly
-      day: saturday
-      timezone: America/New_York
+      interval: monthly
     open-pull-requests-limit: 10
     assignees:
       - lentz
