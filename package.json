@@ -22,7 +22,7 @@
     "node": "^14.0.0"
   },
   "dependencies": {
-    "dotenv": "^16.0.1",
+    "dotenv": "^16.0.2",
     "google-auth-library": "^8.5.1",
     "googleapis": "^105.0.0",
     "shuffle-array": "^1.0.1"
