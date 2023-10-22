@@ -1,0 +1,12 @@
+app = "youtube-shuffle"
+primary_region = "iad"
+
+[env]
+  PORT = 8080
+  REDIRECT_URI = "https://youtube-shuffle.fly.dev"
+
+[http_service]
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 0

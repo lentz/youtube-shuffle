@@ -40,7 +40,7 @@ async function authMiddleware(req, res) {
     [process.env.REDIRECT_URI],
   );
 
-  if (req.headers.cookie) {
+  if (/token/.test(req.headers.cookie)) {
     const tokens = JSON.parse(req.headers.cookie.split('=')[1]);
     oAuth2Client.setCredentials(tokens);
   } else if (qs.code) {
@@ -71,7 +71,7 @@ http
     try {
       const parsedUrl = url.parse(req.url);
       await authMiddleware(req, res);
-      if (parsedUrl.pathname === '/' && !res.finished) {
+      if (parsedUrl.pathname === '/' && !res.writableEnded) {
         const playlists = await getPlaylists();
         const playlistsHTML = playlists
           .map((pl) => {
@@ -87,7 +87,7 @@ http
       }
     } catch (err) {
       res.statusCode = 500;
-      res.end(err.toString());
+      res.end(err.stack);
     }
   })
   .listen(process.env.PORT, () => {
