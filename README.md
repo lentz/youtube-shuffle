@@ -6,7 +6,7 @@ such as the Apple TV.
 
 ## Getting Started
 
-1. Visit https://youtubeshuffle.herokuapp.com
+1. Visit https://youtube-shuffle.fly.dev
 1. You will be redirected to Google to authenticate with your YouTube account
 1. Click the name of the playlist you want to shuffle
 
